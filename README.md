@@ -56,23 +56,24 @@ user-space sources compile and link, and it has not been booted since. Run it be
 | Display | DSI panel, framebuffer by UEFI | `MiniIOMobileFramebuffer.cpp`, `vayu_vsync.c`, `vayu_mdp.c` | hardware: SpringBoard on screen; the controller is only read (no zero-copy present yet) |
 | Touch | Novatek NT36675 on QUP SPI (GPI DMA) | `vayu_nvt.c`, `vayu_qup_spi.c` | hardware: works (`touchscreen=1 nvt_qup=1`); the chip is flashless and XNU downloads its firmware at every start |
 | CPU frequency | Cortex-A55/A76 clusters | `vayu_cpufreq.c` | hardware |
-| Storage | UFS | `hakios.ufs.c` | hardware, read-only survey and reads |
-| Battery, charger, buttons | PM8150B, PM8150 keys | `hakios.battery.c`, `hakios.buttons.c` | hardware: charger state and volume keys follow the phone; the fuel gauge's numbers are not confirmed |
+| Storage | UFS | `hakios.ufs.c` | partial: root read through the loader and `/private/var` R/W (`ufs=2 var_store=1 ufs_write=1`) work; the stock Files app does not work yet |
+| Battery, charger, buttons | PM8150B, PM8150 keys | `hakios.battery.c`, `hakios.buttons.c` | partial: power and volume keys work on hardware; battery does not charge under XNU and drains quickly (fuel gauge unverified) |
 | Backlight, screen off on lock | PM8150L WLED | `vayu_wled.c` | hardware: the screen turns off on lock; the brightness slider is not confirmed |
-| Flashlight | PM8150L | `hakios.torch.c` | hardware |
-| 3D | Adreno 640 | `vayu_adreno.c`, with `hakios.gpu.cpp` and Mesa/freedreno in user space | hardware: SpringBoard drawn on the GPU (`gpu=1 vayu_gpu=1 vayu_keep=1`, needs the GPU firmware and the signed zap shader from your own phone) |
-| Haptics | LRA through the PMIC | `vayu_haptic.c` | hardware: a test pulse is felt; no iOS route |
-| Audio | WCD934x codec, TAS256x amplifiers, ADSP | `vayu_audio.c`, `vayu_pas.c`, `hakios.audio.c`, `userland/src/audio_plugin.c` | hardware: sound plays; known defects, speaker crackle among them |
-| Headphone jack | WCD934x on SLIMbus | `vayu_jack.c` | built, the codec's chip ID was read on hardware; no jack audio claimed |
-| Cameras | IMX582, S5K3T2 | `vayu_camera.c`, `userland/src/camera_*.c` | hardware: frames reach the camera app; colour, speed and lag are not right yet |
-| Sensors | SLPI (SSC) accelerometer and others | `vayu_slpi.c`, `vayu_ssc.c`, `vayu_fastrpc.c`, `userland/src/motion.c` | built; a stream for iOS auto-rotate exists, not confirmed on hardware |
+| Flashlight | PM8150L | `hakios.torch.c` | built, not verified on hardware |
+| 3D / GPU | Adreno 640 (FD640) | `vayu_adreno.c`, with `hakios.gpu.cpp` and Mesa/freedreno in user space | hardware: accelerated rendering on Adreno 640 via FD640 (`gpu=1 vayu_gpu=1 vayu_keep=1`, needs the GPU firmware and the signed zap shader from your own phone) |
+| Haptics | LRA through the PMIC | `vayu_haptic.c` | built, not verified on hardware |
+| Audio | WCD934x codec, TI TAS2562/TAS2564 amplifiers, ADSP | `vayu_audio.c`, `vayu_pas.c`, `hakios.audio.c`, `userland/src/audio_plugin.c` | partial: speaker (TAS2562/TAS2564) and microphone work on hardware; 3.5 mm headphones are silent |
+| Headphone jack | WCD934x on SLIMbus | `vayu_jack.c` | missing / silent: the codec's chip ID was read, but headphone output is silent |
+| Cameras | IMX582, S5K3T2, IMX355, OV02B10 | `vayu_camera.c`, `userland/src/camera_*.c` | partial: still photos from the main sensor (IMX582) and video at ~7.6 fps work on hardware; other sensors not verified |
+| Sensors | SLPI (SSC) accelerometer and others | `vayu_slpi.c`, `vayu_ssc.c`, `vayu_fastrpc.c`, `userland/src/motion.c` | built, not verified on hardware |
+| Thermal | TSENS v2.3 | `hakios.thermal.c` | built, not verified on hardware |
 | Modem | MPSS through the remote file system | `vayu_modem.c`, `vayu_rmtfs.c`, `vayu_pas.c` | hardware: the modem boots, its remote file system is served, WLFW is announced |
-| Cellular | QMI DMS/UIM/NAS, WDS | `vayu_cell.c` | hardware: SIM ready, registration on LTE seen. **Data is not working**: the modem asserts on the first data session because the IPA initialisation message is not sent yet |
-| Wi-Fi | WCN399x on the modem's DSP | `vayu_wifi.c` | not working: the firmware accepts the board data, then crashes; no association |
-| Bluetooth | Qualcomm WCN3998 on a QUP UART | `vayu_bt.c`, `userland/src` extras: `bluetool_stub.c` | built; the controller initialises and `bluetoothd` reports its stack up on hardware, then stops at a vendor-specific command that times out (a workaround for it is written and has not been seen to work); no pairing |
-| NFC | NXP PN553 on I2C | `vayu_nfc.c` | built; the controller answers `CORE_RESET` and `CORE_INIT` on hardware, discovery is not reached |
-| IR blaster | SPI engine | `vayu_ir.c`, `vayu_irtest.c` | built, not confirmed |
-| USB networking | DWC3 gadget, CDC-ECM | `vayu_usbnet.c`, `vayu_usbnet_ecm.c` | built, not confirmed |
+| Cellular | QMI DMS/UIM/NAS, WDS, IPA | `vayu_cell.c` | partial: SIM ready, LTE registration works on hardware. **Mobile data (IPA) hangs the SoC** |
+| Wi-Fi | WCN3990 on the modem's DSP | `vayu_wifi.c` | missing: firmware crashes at `PC=0xb0193960`, `FW_READY` never reached; WMI/HTT/CE host rings not written |
+| Bluetooth | Qualcomm WCN3998 on a QUP UART | `vayu_bt.c`, `userland/src` extras: `bluetool_stub.c` | missing: `bluetoothd` restarts in a loop on Apple vendor HCI commands (`TEST23-BT`) |
+| NFC | NXP PN553 on I2C | `vayu_nfc.c` | missing: driver in tree, tag discovery not working / not verified on hardware |
+| IR blaster | SPI engine | `vayu_ir.c`, `vayu_irtest.c` | built, not verified on hardware |
+| USB networking | DWC3 gadget, CDC-ECM/NCM | `vayu_usbnet.c`, `vayu_usbnet_ecm.c` | hardware: USB network works (`en0`); no Wi-Fi or cellular data |
 
 The rest of the stock iOS user space comes from your own IPSW exactly as on the POCO X5 Pro.
 
