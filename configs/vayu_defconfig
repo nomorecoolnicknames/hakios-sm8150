@@ -1,0 +1,5 @@
+# HakiOS defconfig for the POCO X3 Pro (vayu, SM8150, devices/vayu): the common kernel's configuration, the SM8150 family's
+# facts and this phone's own, put together the way Android puts a device's kernel configuration together.
+#include common_defconfig
+#include sm8150.config
+#include vayu.config
